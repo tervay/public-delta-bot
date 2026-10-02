@@ -1,12 +1,12 @@
-export type EventState = { name: string; teams: string[] }
+export type EventState = { name: string; group: string; teams: string[] }
 
 export type State = { takenAt: string; events: Record<string, EventState> }
 
 export type Entry = {
   at: string
-  eventsAdded: { key: string; name: string; teams: string[] }[]
-  eventsRemoved: { key: string; name: string }[]
-  changed: { key: string; name: string; added: string[]; removed: string[] }[]
+  eventsAdded: { key: string; name: string; group: string; teams: string[] }[]
+  eventsRemoved: { key: string; name: string; group: string }[]
+  changed: { key: string; name: string; group: string; added: string[]; removed: string[] }[]
 }
 
 export type Feed = { lastRun: string; entries: Entry[] }
@@ -23,17 +23,21 @@ export function diff(prev: State, next: State): Entry | null {
 
   const eventsAdded = keys(next)
     .filter((key) => !prev.events[key])
-    .map((key) => ({ key, name: next.events[key].name, teams: [...next.events[key].teams].sort(byTeamNumber) }))
+    .map((key) => {
+      const { name, group, teams } = next.events[key]
+      return { key, name, group, teams: [...teams].sort(byTeamNumber) }
+    })
 
   const eventsRemoved = keys(prev)
     .filter((key) => !next.events[key])
-    .map((key) => ({ key, name: prev.events[key].name }))
+    .map((key) => ({ key, name: prev.events[key].name, group: prev.events[key].group }))
 
   const changed = keys(next)
     .filter((key) => prev.events[key])
     .map((key) => ({
       key,
       name: next.events[key].name,
+      group: next.events[key].group,
       added: minus(next.events[key].teams, prev.events[key].teams),
       removed: minus(prev.events[key].teams, next.events[key].teams),
     }))

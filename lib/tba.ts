@@ -4,7 +4,16 @@ const BASE = 'https://www.thebluealliance.com/api/v3'
 const OFFICIAL_EVENT_TYPES = new Set([0, 1, 2, 3, 4, 5, 6, 7])
 const CONCURRENCY = 8
 
-type SimpleEvent = { key: string; name: string; event_type: number }
+type TbaEvent = {
+  key: string
+  name: string
+  short_name: string | null
+  event_type: number
+  district: { abbreviation: string } | null
+}
+
+export const groupOf = (e: TbaEvent) =>
+  e.district ? e.district.abbreviation.toUpperCase() : e.event_type === 0 ? 'Regionals' : 'Championship'
 
 async function tba<T>(path: string): Promise<T> {
   const key = process.env.TBA_AUTH_KEY
@@ -15,7 +24,7 @@ async function tba<T>(path: string): Promise<T> {
 }
 
 export async function fetchOfficialEvents(year: number) {
-  const events = await tba<SimpleEvent[]>(`/events/${year}/simple`)
+  const events = await tba<TbaEvent[]>(`/events/${year}`)
   return events.filter((e) => OFFICIAL_EVENT_TYPES.has(e.event_type))
 }
 
@@ -27,7 +36,7 @@ export async function fetchState(year: number): Promise<State> {
   const events: State['events'] = {}
   const worker = async () => {
     for (let e = queue.shift(); e; e = queue.shift()) {
-      events[e.key] = { name: e.name, teams: await fetchTeamKeys(e.key) }
+      events[e.key] = { name: e.short_name || e.name, group: groupOf(e), teams: await fetchTeamKeys(e.key) }
     }
   }
   await Promise.all(Array.from({ length: CONCURRENCY }, worker))

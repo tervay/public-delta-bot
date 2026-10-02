@@ -9,20 +9,32 @@ const team = (key: string) => key.slice(3)
 const teams = (keys: string[], sign: '+' | '−', cls: string) =>
   keys.map((k) => `<a class="${cls}" href="https://www.thebluealliance.com/team/${team(k)}/2027">${sign}${team(k)}</a>`).join(' ')
 
-const event = (key: string, name: string, tag: string, body: string) => `
+type Row = { key: string; name: string; group: string; tag: string; body: string }
+
+const event = (r: Row) => `
   <li>
-    <a class="event" href="https://www.thebluealliance.com/event/${escape(key)}">${escape(name)}</a>${tag}
-    <div class="teams">${body}</div>
+    <a class="event" href="https://www.thebluealliance.com/event/${escape(r.key)}">${escape(r.name)}</a>${r.tag}
+    <div class="teams">${r.body}</div>
   </li>`
+
+const groupRank = (g: string) => (g === 'Regionals' ? 1 : g === 'Championship' ? 2 : 0)
+
+const renderGroups = (rows: Row[]) =>
+  [...Map.groupBy(rows, (r) => r.group)]
+    .sort(([a], [b]) => groupRank(a) - groupRank(b) || a.localeCompare(b))
+    .map(([group, rs]) => `
+    <h3>${escape(group)}</h3>
+    <ul>${rs.sort((a, b) => a.name.localeCompare(b.name)).map(event).join('')}</ul>`)
+    .join('')
 
 const renderEntry = (e: Entry) => `
   <section>
     <h2>${new Date(e.at).toUTCString().slice(0, 16)}</h2>
-    <ul>
-      ${e.eventsAdded.map((x) => event(x.key, x.name, ' <span class="tag">new event</span>', teams(x.teams, '+', 'add'))).join('')}
-      ${e.changed.map((x) => event(x.key, x.name, '', `${teams(x.added, '+', 'add')} ${teams(x.removed, '−', 'del')}`)).join('')}
-      ${e.eventsRemoved.map((x) => event(x.key, x.name, ' <span class="tag del">event removed</span>', '')).join('')}
-    </ul>
+    ${renderGroups([
+      ...e.eventsAdded.map((x) => ({ ...x, tag: ' <span class="tag">new event</span>', body: teams(x.teams, '+', 'add') })),
+      ...e.changed.map((x) => ({ ...x, tag: '', body: `${teams(x.added, '+', 'add')} ${teams(x.removed, '−', 'del')}` })),
+      ...e.eventsRemoved.map((x) => ({ ...x, tag: ' <span class="tag del">event removed</span>', body: '' })),
+    ])}
   </section>`
 
 const render = (feed: Feed | null) => `<!doctype html>
@@ -38,8 +50,9 @@ const render = (feed: Feed | null) => `<!doctype html>
   body { margin: 0 auto; max-width: 760px; padding: 24px 16px; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, sans-serif; }
   h1 { font-size: 1.5rem; margin: 0; }
   h2 { font-size: 1rem; margin: 32px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+  h3 { font-size: 0.8rem; letter-spacing: 0.05em; color: var(--muted); margin: 16px 0 0; }
   .meta { color: var(--muted); margin: 4px 0 0; }
-  ul { list-style: none; padding: 0; margin: 0; }
+  ul { list-style: none; padding: 0 0 0 12px; margin: 0; }
   li { padding: 8px 0; border-bottom: 1px solid var(--line); }
   a { color: inherit; text-decoration: none; }
   a:hover { text-decoration: underline; }
