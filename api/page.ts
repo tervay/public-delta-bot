@@ -53,7 +53,14 @@ const render = (feed: Feed | null) => `<!doctype html>
 <body>
 <h1>2027 FRC Signup Deltas</h1>
 <p class="meta">Teams added to or dropped from official 2027 events on The Blue Alliance.
-${feed ? `Last checked ${escape(new Date(feed.lastRun).toUTCString())}.` : 'No data yet.'}</p>
+${feed ? `Last checked <time id="last-run" datetime="${escape(feed.lastRun)}" title="${escape(new Date(feed.lastRun).toUTCString())}">${escape(new Date(feed.lastRun).toUTCString())}</time>.` : 'No data yet.'}</p>
+<script>
+  const t = document.getElementById('last-run')
+  if (t) {
+    const s = (Date.now() - new Date(t.dateTime)) / 1000
+    t.textContent = s < 60 ? 'just now' : s < 3600 ? Math.floor(s / 60) + 'min ago' : s < 86400 ? Math.floor(s / 3600) + 'hr ago' : Math.floor(s / 86400) + 'd ago'
+  }
+</script>
 ${feed?.entries.length ? feed.entries.map(renderEntry).join('') : '<p class="meta">No changes recorded yet.</p>'}
 </body>
 </html>`
