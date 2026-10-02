@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     readJson<Feed>('feed.json', true),
   ])
 
-  const entry = prev ? diff(prev, next) : null
+  const entry = diff(prev ?? { takenAt: '', events: {} }, next)
   const entries = feed?.entries ?? []
   const updated: Feed = { lastRun: next.takenAt, entries: entry ? [entry, ...entries] : entries }
 
