@@ -52,6 +52,8 @@ const render = (feed: Feed | null) => `<!doctype html>
   @media (prefers-color-scheme: dark) { :root { --bg: #0d1117; --fg: #e6edf3; --muted: #8b949e; --line: #30363d; --add: #3fb950; --del: #f85149; } }
   body { margin: 0 auto; max-width: 760px; padding: 24px 16px; background: var(--bg); color: var(--fg); font: 15px/1.5 "Albert Sans", system-ui, sans-serif; }
   h1 { font-size: 1.5rem; margin: 0; }
+  .by { font-size: 0.95rem; font-weight: 400; color: var(--muted); }
+  .by a { text-decoration: underline; }
   h2 { font-size: 1rem; margin: 32px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
   h3 { font-size: 0.8rem; letter-spacing: 0.05em; color: var(--muted); margin: 16px 0 0; }
   .meta { color: var(--muted); margin: 4px 0 0; }
@@ -67,7 +69,7 @@ const render = (feed: Feed | null) => `<!doctype html>
 </style>
 </head>
 <body>
-<h1>2027 FRC Signup Deltas</h1>
+<h1>2027 FRC Signup Deltas <span class="by">by <a href="https://www.chiefdelphi.com/u/jtrv/summary">Justin</a></span></h1>
 <p class="meta">Teams added to or dropped from official 2027 events on The Blue Alliance.
 ${feed ? `Last checked <time id="last-run" datetime="${escape(feed.lastRun)}" title="${escape(new Date(feed.lastRun).toUTCString())}">${escape(new Date(feed.lastRun).toUTCString())}</time>.` : 'No data yet.'}</p>
 <script>
