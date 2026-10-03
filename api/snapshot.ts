@@ -1,3 +1,4 @@
+import { invalidateByTag } from '@vercel/functions'
 import { diff, type Feed, type State } from '../lib/diff.js'
 import { readJson, writeJson } from '../lib/store.js'
 import { fetchState } from '../lib/tba.js'
@@ -23,6 +24,7 @@ export async function GET(request: Request) {
   await writeJson(`snapshots/${next.takenAt.slice(0, 10)}.json`, next)
   await writeJson('state.json', next)
   await writeJson('feed.json', updated)
+  await invalidateByTag('feed')
 
   return Response.json({
     baseline: !prev,

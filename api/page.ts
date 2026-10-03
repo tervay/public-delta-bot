@@ -84,11 +84,12 @@ ${feed?.entries.length ? feed.entries.map(renderEntry).join('') : '<p class="met
 </html>`
 
 export async function GET() {
-  const feed = await readJson<Feed>('feed.json')
+  const feed = await readJson<Feed>('feed.json', true)
   return new Response(render(feed), {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+      'Vercel-Cache-Tag': 'feed',
     },
   })
 }
