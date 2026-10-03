@@ -44,10 +44,13 @@ const render = (feed: Feed | null) => `<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>2027 FRC Signup Deltas</title>
 <meta name="description" content="Daily changes to team lists for official 2027 FRC events, from The Blue Alliance.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;600;700&display=swap">
 <style>
   :root { --bg: #fff; --fg: #1a1a1a; --muted: #666; --line: #e5e5e5; --add: #1a7f37; --del: #cf222e; color-scheme: light dark; }
   @media (prefers-color-scheme: dark) { :root { --bg: #0d1117; --fg: #e6edf3; --muted: #8b949e; --line: #30363d; --add: #3fb950; --del: #f85149; } }
-  body { margin: 0 auto; max-width: 760px; padding: 24px 16px; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, sans-serif; }
+  body { margin: 0 auto; max-width: 760px; padding: 24px 16px; background: var(--bg); color: var(--fg); font: 15px/1.5 "Albert Sans", system-ui, sans-serif; }
   h1 { font-size: 1.5rem; margin: 0; }
   h2 { font-size: 1rem; margin: 32px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
   h3 { font-size: 0.8rem; letter-spacing: 0.05em; color: var(--muted); margin: 16px 0 0; }
