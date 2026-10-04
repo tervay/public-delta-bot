@@ -1,4 +1,5 @@
 import type { State } from './diff.js'
+import { fetchTeamKeys } from './frc.js'
 
 const BASE = 'https://www.thebluealliance.com/api/v3'
 const OFFICIAL_EVENT_TYPES = new Set([0, 1, 2, 3, 4, 5, 6, 7])
@@ -6,6 +7,7 @@ const CONCURRENCY = 8
 
 type TbaEvent = {
   key: string
+  event_code: string
   name: string
   short_name: string | null
   event_type: number
@@ -29,15 +31,13 @@ export async function fetchOfficialEvents(year: number) {
   return events.filter((e) => OFFICIAL_EVENT_TYPES.has(e.event_type))
 }
 
-export const fetchTeamKeys = (eventKey: string) => tba<string[]>(`/event/${eventKey}/teams/keys`)
-
 export async function fetchState(year: number): Promise<State> {
   const takenAt = new Date().toISOString()
   const queue = await fetchOfficialEvents(year)
   const events: State['events'] = {}
   const worker = async () => {
     for (let e = queue.shift(); e; e = queue.shift()) {
-      events[e.key] = { name: e.short_name || e.name, group: groupOf(e), week: e.week, teams: await fetchTeamKeys(e.key) }
+      events[e.key] = { name: e.short_name || e.name, group: groupOf(e), week: e.week, teams: await fetchTeamKeys(year, e.event_code) }
     }
   }
   await Promise.all(Array.from({ length: CONCURRENCY }, worker))

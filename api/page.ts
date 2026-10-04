@@ -18,7 +18,7 @@ const dayId = (iso: string) => `day-${new Date(iso).toLocaleDateString('en-CA', 
 const team = (key: string) => key.slice(3)
 
 const teams = (keys: string[], sign: '+' | '−', cls: string) =>
-  keys.map((k) => `<a class="${cls}" data-team="${team(k)}" href="https://www.thebluealliance.com/team/${team(k)}/2027">${sign}${team(k)}</a>`).join(' ')
+  keys.map((k) => `<a class="${cls}" data-team="${team(k)}" href="https://frc-events.firstinspires.org/2027/team/${team(k)}">${sign}${team(k)}</a>`).join(' ')
 
 type Row = { key: string; name: string; group: string; tag: string; body: string; teams: string[]; math?: string; week?: number | null }
 
@@ -48,7 +48,7 @@ const math = (added: number, removed: number, after: number | undefined) =>
 
 const event = (r: Row) => `
   <li data-teams="${r.teams.map(team).join(' ')}">
-    <div><a class="event" href="https://www.thebluealliance.com/event/${escape(r.key)}">${escape(r.name)}</a>${r.week == null ? '' : `<sup class="week">${r.week + 1}</sup>`}${r.tag}</div>
+    <div><a class="event" href="https://frc-events.firstinspires.org/2027/${escape(r.key.slice(4).toUpperCase())}">${escape(r.name)}</a>${r.week == null ? '' : `<sup class="week">${r.week + 1}</sup>`}${r.tag}</div>
     <div class="teams">${r.body}</div>
     <div class="math">${r.math ?? ''}</div>
   </li>`
@@ -102,7 +102,7 @@ const render = (feed: Feed | null, state: State | null) => `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>2027 FRC Signup Deltas</title>
-<meta name="description" content="Daily changes to team lists for official 2027 FRC events, from The Blue Alliance.">
+<meta name="description" content="Daily changes to team lists for official 2027 FRC events, from FIRST's FRC Events.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;600;700&display=swap">
@@ -151,7 +151,7 @@ const render = (feed: Feed | null, state: State | null) => `<!doctype html>
 </head>
 <body>
 <h1>2027 FRC Signup Deltas <span class="by">by <a href="https://www.chiefdelphi.com/u/jtrv/summary">Justin</a></span></h1>
-<p class="meta">Teams added to or dropped from official 2027 events on The Blue Alliance, checked daily at 8pm Eastern.
+<p class="meta">Teams added to or dropped from official 2027 events on FRC Events, checked daily at 8pm Eastern.
 ${feed ? `Last checked <time id="last-run" datetime="${escape(feed.lastRun)}" title="${timestamp(feed.lastRun)}">${timestamp(feed.lastRun)}</time>.` : 'No data yet.'}</p>
 <script>
   const t = document.getElementById('last-run')
