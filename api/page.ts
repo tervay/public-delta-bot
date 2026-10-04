@@ -4,6 +4,13 @@ import { readJson } from '../lib/store.js'
 const escape = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
 
+const eastern = (iso: string, options: Intl.DateTimeFormatOptions) =>
+  new Date(iso).toLocaleString('en-US', { timeZone: 'America/New_York', ...options })
+
+const day = (iso: string) => eastern(iso, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+
+const timestamp = (iso: string) => eastern(iso, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
+
 const team = (key: string) => key.slice(3)
 
 const teams = (keys: string[], sign: '+' | '−', cls: string) =>
@@ -29,7 +36,7 @@ const renderGroups = (rows: Row[]) =>
 
 const renderEntry = (e: Entry) => `
   <section>
-    <h2>${new Date(e.at).toUTCString().slice(0, 16)}</h2>
+    <h2>${day(e.at)}</h2>
     ${renderGroups([
       ...e.eventsAdded.map((x) => ({ ...x, tag: ' <span class="tag">new event</span>', body: teams(x.teams, '+', 'add') })),
       ...e.changed.map((x) => ({ ...x, tag: '', body: `${teams(x.added, '+', 'add')} ${teams(x.removed, '−', 'del')}` })),
@@ -71,7 +78,7 @@ const render = (feed: Feed | null) => `<!doctype html>
 <body>
 <h1>2027 FRC Signup Deltas <span class="by">by <a href="https://www.chiefdelphi.com/u/jtrv/summary">Justin</a></span></h1>
 <p class="meta">Teams added to or dropped from official 2027 events on The Blue Alliance.
-${feed ? `Last checked <time id="last-run" datetime="${escape(feed.lastRun)}" title="${escape(new Date(feed.lastRun).toUTCString())}">${escape(new Date(feed.lastRun).toUTCString())}</time>.` : 'No data yet.'}</p>
+${feed ? `Last checked <time id="last-run" datetime="${escape(feed.lastRun)}" title="${timestamp(feed.lastRun)}">${timestamp(feed.lastRun)}</time>.` : 'No data yet.'}</p>
 <script>
   const t = document.getElementById('last-run')
   if (t) {
