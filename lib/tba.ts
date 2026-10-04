@@ -13,10 +13,14 @@ type TbaEvent = {
   event_type: number
   week: number | null
   district: { abbreviation: string } | null
+  country: string | null
+  state_prov: string | null
 }
 
 export const groupOf = (e: TbaEvent) =>
   e.district ? e.district.abbreviation.toUpperCase() : e.event_type === 0 ? 'Regionals' : 'Championship'
+
+const regionOf = (e: TbaEvent) => (e.country === 'USA' ? e.state_prov : e.country)
 
 async function tba<T>(path: string): Promise<T> {
   const key = process.env.TBA_AUTH_KEY
@@ -37,7 +41,7 @@ export async function fetchState(year: number): Promise<State> {
   const events: State['events'] = {}
   const worker = async () => {
     for (let e = queue.shift(); e; e = queue.shift()) {
-      events[e.key] = { name: e.short_name || e.name, group: groupOf(e), week: e.week, teams: await fetchTeamKeys(year, e.event_code) }
+      events[e.key] = { name: e.short_name || e.name, group: groupOf(e), week: e.week, region: regionOf(e), teams: await fetchTeamKeys(year, e.event_code) }
     }
   }
   await Promise.all(Array.from({ length: CONCURRENCY }, worker))

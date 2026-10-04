@@ -20,7 +20,7 @@ const team = (key: string) => key.slice(3)
 const teams = (keys: string[], sign: '+' | '−', cls: string) =>
   keys.map((k) => `<a class="${cls}" data-team="${team(k)}" href="https://frc-events.firstinspires.org/2027/team/${team(k)}">${sign}${team(k)}</a>`).join(' ')
 
-type Row = { key: string; name: string; group: string; tag: string; body: string; teams: string[]; math?: string; week?: number | null }
+type Row = { key: string; name: string; group: string; tag: string; body: string; teams: string[]; math?: string; week?: number | null; region?: string | null }
 
 type Counts = Map<Entry, Map<string, number>>
 
@@ -47,7 +47,7 @@ const math = (added: number, removed: number, after: number | undefined) =>
     : `${after - added + removed}${added ? ` <span class="add">+ ${added}</span>` : ''}${removed ? ` <span class="del">− ${removed}</span>` : ''} = <strong>${after}</strong>`
 
 const event = (r: Row) => `
-  <li data-teams="${r.teams.map(team).join(' ')}">
+  <li data-teams="${r.teams.map(team).join(' ')}" data-group="${escape(r.group)}"${r.region ? ` data-region="${escape(r.region)}"` : ''}>
     <div><a class="event" href="https://frc-events.firstinspires.org/2027/${escape(r.key.slice(4).toUpperCase())}">${escape(r.name)}</a>${r.week == null ? '' : `<sup class="week">${r.week + 1}</sup>`}${r.tag}</div>
     <div class="teams">${r.body}</div>
     <div class="math">${r.math ?? ''}</div>
@@ -61,7 +61,7 @@ const renderGroups = (rows: Row[]) =>
   [...Map.groupBy(rows, (r) => r.group)]
     .sort(([a], [b]) => byGroup(a, b))
     .map(([group, rs]) => `
-    <div class="group" data-group="${escape(group)}">
+    <div class="group">
       <h3>${escape(group)}</h3>
       <ul>${rs.sort((a, b) => (a.week ?? Infinity) - (b.week ?? Infinity) || a.name.localeCompare(b.name)).map(event).join('')}</ul>
     </div>`)
@@ -80,20 +80,32 @@ const renderEntry = (counts: Counts, events: State['events']) => (e: Entry) => `
         math: math(x.added.length, x.removed.length, counts.get(e)?.get(x.key)),
       })),
       ...e.eventsRemoved.map((x) => ({ ...x, tag: ' <span class="tag del">event removed</span>', body: '', teams: [] })),
-    ].map((r) => ({ ...r, week: events[r.key]?.week })))}
+    ].map((r) => ({ ...r, week: events[r.key]?.week, region: events[r.key]?.region })))}
   </section>`
 
-const groups = (entries: Entry[]) =>
-  [...new Set(entries.flatMap((e) => [...e.eventsAdded, ...e.changed, ...e.eventsRemoved].map((x) => x.group)))].sort(byGroup)
+const rows = (entries: Entry[]) => entries.flatMap((e) => [...e.eventsAdded, ...e.changed, ...e.eventsRemoved])
 
-const renderSidebar = (entries: Entry[]) => `
+const groups = (entries: Entry[]) => [...new Set(rows(entries).map((x) => x.group))].sort(byGroup)
+
+const isState = (region: string) => region.length === 2
+
+const regions = (entries: Entry[], events: State['events']) =>
+  [...new Set(rows(entries).flatMap((x) => events[x.key]?.region || []))]
+    .sort((a, b) => Number(!isState(a)) - Number(!isState(b)) || a.localeCompare(b))
+
+const chips = (kind: string, values: string[]) =>
+  values.map((v) => `<button type="button" data-filter="${kind}:${escape(v)}" aria-pressed="false">${escape(v)}</button>`).join('')
+
+const renderSidebar = (entries: Entry[], events: State['events']) => `
 <aside>
   <label class="label" for="team">Team</label>
   <input id="team" type="search" inputmode="numeric" placeholder="e.g. 254" autocomplete="off">
   <h4 class="label">Days</h4>
   <nav class="days">${entries.map((e) => `<a href="#${dayId(e.at)}">${shortDay(e.at)}</a>`).join('')}</nav>
   <h4 class="label">Districts</h4>
-  <div class="chips">${groups(entries).map((g) => `<button type="button" data-group="${escape(g)}" aria-pressed="false">${escape(g)}</button>`).join('')}</div>
+  <div class="chips">${chips('group', groups(entries))}</div>
+  <h4 class="label">Regions</h4>
+  <div class="chips">${chips('region', regions(entries, events))}</div>
 </aside>`
 
 const render = (feed: Feed | null, state: State | null) => `<!doctype html>
@@ -161,7 +173,7 @@ ${feed ? `Last checked <time id="last-run" datetime="${escape(feed.lastRun)}" ti
   }
 </script>
 ${feed?.entries.length ? `<div class="layout">
-${renderSidebar(feed.entries)}
+${renderSidebar(feed.entries, state?.events ?? {})}
 <main>
 ${feed.entries.map(renderEntry(countsAfter(feed.entries, state), state?.events ?? {})).join('')}
 <p id="empty" class="meta" hidden>No matching changes.</p>
@@ -172,8 +184,9 @@ ${feed.entries.map(renderEntry(countsAfter(feed.entries, state), state?.events ?
   const picked = new Set()
   const apply = () => {
     const q = input.value.trim()
-    document.querySelectorAll('main li').forEach((li) => (li.hidden = !!q && !li.dataset.teams.split(' ').includes(q)))
-    document.querySelectorAll('.group').forEach((g) => (g.hidden = (picked.size > 0 && !picked.has(g.dataset.group)) || !g.querySelector('li:not([hidden])')))
+    const filtered = (li) => picked.size > 0 && !picked.has('group:' + li.dataset.group) && !picked.has('region:' + li.dataset.region)
+    document.querySelectorAll('main li').forEach((li) => (li.hidden = (!!q && !li.dataset.teams.split(' ').includes(q)) || filtered(li)))
+    document.querySelectorAll('.group').forEach((g) => (g.hidden = !g.querySelector('li:not([hidden])')))
     document.querySelectorAll('main section').forEach((s) => (s.hidden = !s.querySelector('.group:not([hidden])')))
     document.querySelectorAll('[data-team]').forEach((a) => a.classList.toggle('hit', a.dataset.team === q))
     document.getElementById('empty').hidden = !!document.querySelector('main section:not([hidden])')
@@ -183,7 +196,7 @@ ${feed.entries.map(renderEntry(countsAfter(feed.entries, state), state?.events ?
     b.addEventListener('click', () => {
       const on = b.getAttribute('aria-pressed') !== 'true'
       b.setAttribute('aria-pressed', on)
-      on ? picked.add(b.dataset.group) : picked.delete(b.dataset.group)
+      on ? picked.add(b.dataset.filter) : picked.delete(b.dataset.filter)
       apply()
     }),
   )
