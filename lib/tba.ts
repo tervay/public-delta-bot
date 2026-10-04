@@ -9,6 +9,7 @@ type TbaEvent = {
   name: string
   short_name: string | null
   event_type: number
+  week: number | null
   district: { abbreviation: string } | null
 }
 
@@ -36,7 +37,7 @@ export async function fetchState(year: number): Promise<State> {
   const events: State['events'] = {}
   const worker = async () => {
     for (let e = queue.shift(); e; e = queue.shift()) {
-      events[e.key] = { name: e.short_name || e.name, group: groupOf(e), teams: await fetchTeamKeys(e.key) }
+      events[e.key] = { name: e.short_name || e.name, group: groupOf(e), week: e.week, teams: await fetchTeamKeys(e.key) }
     }
   }
   await Promise.all(Array.from({ length: CONCURRENCY }, worker))

@@ -1,4 +1,4 @@
-export type EventState = { name: string; group: string; teams: string[] }
+export type EventState = { name: string; group: string; week?: number | null; teams: string[] }
 
 export type State = { takenAt: string; events: Record<string, EventState> }
 

@@ -20,7 +20,7 @@ const team = (key: string) => key.slice(3)
 const teams = (keys: string[], sign: '+' | '−', cls: string) =>
   keys.map((k) => `<a class="${cls}" data-team="${team(k)}" href="https://www.thebluealliance.com/team/${team(k)}/2027">${sign}${team(k)}</a>`).join(' ')
 
-type Row = { key: string; name: string; group: string; tag: string; body: string; teams: string[]; math?: string }
+type Row = { key: string; name: string; group: string; tag: string; body: string; teams: string[]; math?: string; week?: number | null }
 
 type Counts = Map<Entry, Map<string, number>>
 
@@ -48,7 +48,7 @@ const math = (added: number, removed: number, after: number | undefined) =>
 
 const event = (r: Row) => `
   <li data-teams="${r.teams.map(team).join(' ')}">
-    <div><a class="event" href="https://www.thebluealliance.com/event/${escape(r.key)}">${escape(r.name)}</a>${r.tag}</div>
+    <div><a class="event" href="https://www.thebluealliance.com/event/${escape(r.key)}">${escape(r.name)}</a>${r.week == null ? '' : `<sup class="week">${r.week + 1}</sup>`}${r.tag}</div>
     <div class="teams">${r.body}</div>
     <div class="math">${r.math ?? ''}</div>
   </li>`
@@ -63,11 +63,11 @@ const renderGroups = (rows: Row[]) =>
     .map(([group, rs]) => `
     <div class="group" data-group="${escape(group)}">
       <h3>${escape(group)}</h3>
-      <ul>${rs.sort((a, b) => a.name.localeCompare(b.name)).map(event).join('')}</ul>
+      <ul>${rs.sort((a, b) => (a.week ?? Infinity) - (b.week ?? Infinity) || a.name.localeCompare(b.name)).map(event).join('')}</ul>
     </div>`)
     .join('')
 
-const renderEntry = (counts: Counts) => (e: Entry) => `
+const renderEntry = (counts: Counts, events: State['events']) => (e: Entry) => `
   <section id="${dayId(e.at)}">
     <h2>${day(e.at)}</h2>
     ${renderGroups([
@@ -80,7 +80,7 @@ const renderEntry = (counts: Counts) => (e: Entry) => `
         math: math(x.added.length, x.removed.length, counts.get(e)?.get(x.key)),
       })),
       ...e.eventsRemoved.map((x) => ({ ...x, tag: ' <span class="tag del">event removed</span>', body: '', teams: [] })),
-    ])}
+    ].map((r) => ({ ...r, week: events[r.key]?.week })))}
   </section>`
 
 const groups = (entries: Entry[]) =>
@@ -135,6 +135,7 @@ const render = (feed: Feed | null, state: State | null) => `<!doctype html>
   a { color: inherit; text-decoration: none; }
   a:hover { text-decoration: underline; }
   .event { font-weight: 600; }
+  .week { color: var(--muted); font-size: 0.7rem; margin-left: 2px; }
   .teams { font-variant-numeric: tabular-nums; word-spacing: 4px; }
   .add { color: var(--add); }
   .del { color: var(--del); }
@@ -162,7 +163,7 @@ ${feed ? `Last checked <time id="last-run" datetime="${escape(feed.lastRun)}" ti
 ${feed?.entries.length ? `<div class="layout">
 ${renderSidebar(feed.entries)}
 <main>
-${feed.entries.map(renderEntry(countsAfter(feed.entries, state))).join('')}
+${feed.entries.map(renderEntry(countsAfter(feed.entries, state), state?.events ?? {})).join('')}
 <p id="empty" class="meta" hidden>No matching changes.</p>
 </main>
 </div>
