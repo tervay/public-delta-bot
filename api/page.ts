@@ -1,4 +1,4 @@
-import type { Entry, Feed } from '../lib/diff.js'
+import type { Entry, Feed, State } from '../lib/diff.js'
 import { readJson } from '../lib/store.js'
 
 const escape = (s: string) =>
@@ -20,12 +20,35 @@ const team = (key: string) => key.slice(3)
 const teams = (keys: string[], sign: '+' | '−', cls: string) =>
   keys.map((k) => `<a class="${cls}" data-team="${team(k)}" href="https://www.thebluealliance.com/team/${team(k)}/2027">${sign}${team(k)}</a>`).join(' ')
 
-type Row = { key: string; name: string; group: string; tag: string; body: string; teams: string[] }
+type Row = { key: string; name: string; group: string; tag: string; body: string; teams: string[]; math?: string }
+
+type Counts = Map<Entry, Map<string, number>>
+
+const countsAfter = (entries: Entry[], state: State | null): Counts => {
+  const counts = new Map(Object.entries(state?.events ?? {}).map(([key, e]) => [key, e.teams.length]))
+  return new Map(
+    entries.map((e) => {
+      const after = new Map<string, number>()
+      for (const x of e.changed) {
+        const n = counts.get(x.key)
+        if (n === undefined) continue
+        after.set(x.key, n)
+        counts.set(x.key, n - x.added.length + x.removed.length)
+      }
+      for (const x of [...e.eventsAdded, ...e.eventsRemoved]) counts.delete(x.key)
+      return [e, after]
+    }),
+  )
+}
+
+const math = (added: number, removed: number, after: number | undefined) =>
+  after === undefined ? '' : `${after - added + removed} <span class="add">+ ${added}</span> <span class="del">− ${removed}</span> = <strong>${after}</strong>`
 
 const event = (r: Row) => `
   <li data-teams="${r.teams.map(team).join(' ')}">
     <div><a class="event" href="https://www.thebluealliance.com/event/${escape(r.key)}">${escape(r.name)}</a>${r.tag}</div>
     <div class="teams">${r.body}</div>
+    <div class="math">${r.math ?? ''}</div>
   </li>`
 
 const groupRank = (g: string) => (g === 'Regionals' ? 1 : g === 'Championship' ? 2 : 0)
@@ -42,12 +65,18 @@ const renderGroups = (rows: Row[]) =>
     </div>`)
     .join('')
 
-const renderEntry = (e: Entry) => `
+const renderEntry = (counts: Counts) => (e: Entry) => `
   <section id="${dayId(e.at)}">
     <h2>${day(e.at)}</h2>
     ${renderGroups([
       ...e.eventsAdded.map((x) => ({ ...x, tag: ' <span class="tag">new event</span>', body: teams(x.teams, '+', 'add') })),
-      ...e.changed.map((x) => ({ ...x, tag: '', body: `${teams(x.added, '+', 'add')} ${teams(x.removed, '−', 'del')}`, teams: [...x.added, ...x.removed] })),
+      ...e.changed.map((x) => ({
+        ...x,
+        tag: '',
+        body: `${teams(x.added, '+', 'add')} ${teams(x.removed, '−', 'del')}`,
+        teams: [...x.added, ...x.removed],
+        math: math(x.added.length, x.removed.length, counts.get(e)?.get(x.key)),
+      })),
       ...e.eventsRemoved.map((x) => ({ ...x, tag: ' <span class="tag del">event removed</span>', body: '', teams: [] })),
     ])}
   </section>`
@@ -65,7 +94,7 @@ const renderSidebar = (entries: Entry[]) => `
   <div class="chips">${groups(entries).map((g) => `<button type="button" data-group="${escape(g)}" aria-pressed="false">${escape(g)}</button>`).join('')}</div>
 </aside>`
 
-const render = (feed: Feed | null) => `<!doctype html>
+const render = (feed: Feed | null, state: State | null) => `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -98,7 +127,9 @@ const render = (feed: Feed | null) => `<!doctype html>
   section + section h2 { margin-top: 32px; }
   h3 { font-size: 0.8rem; letter-spacing: 0.05em; color: var(--muted); margin: 16px 0 0; }
   ul { list-style: none; padding: 0; margin: 0; }
-  li { display: grid; grid-template-columns: 16rem 1fr; gap: 16px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  li { display: grid; grid-template-columns: 16rem 1fr auto; gap: 16px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .math { color: var(--muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .math strong { color: var(--fg); }
   a { color: inherit; text-decoration: none; }
   a:hover { text-decoration: underline; }
   .event { font-weight: 600; }
@@ -129,7 +160,7 @@ ${feed ? `Last checked <time id="last-run" datetime="${escape(feed.lastRun)}" ti
 ${feed?.entries.length ? `<div class="layout">
 ${renderSidebar(feed.entries)}
 <main>
-${feed.entries.map(renderEntry).join('')}
+${feed.entries.map(renderEntry(countsAfter(feed.entries, state))).join('')}
 <p id="empty" class="meta" hidden>No matching changes.</p>
 </main>
 </div>
@@ -158,8 +189,8 @@ ${feed.entries.map(renderEntry).join('')}
 </html>`
 
 export async function GET() {
-  const feed = await readJson<Feed>('feed.json', true)
-  return new Response(render(feed), {
+  const [feed, state] = await Promise.all([readJson<Feed>('feed.json', true), readJson<State>('state.json', true)])
+  return new Response(render(feed, state), {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
