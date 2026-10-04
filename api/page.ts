@@ -42,7 +42,9 @@ const countsAfter = (entries: Entry[], state: State | null): Counts => {
 }
 
 const math = (added: number, removed: number, after: number | undefined) =>
-  after === undefined ? '' : `${after - added + removed} <span class="add">+ ${added}</span> <span class="del">− ${removed}</span> = <strong>${after}</strong>`
+  after === undefined
+    ? ''
+    : `${after - added + removed}${added ? ` <span class="add">+ ${added}</span>` : ''}${removed ? ` <span class="del">− ${removed}</span>` : ''} = <strong>${after}</strong>`
 
 const event = (r: Row) => `
   <li data-teams="${r.teams.map(team).join(' ')}">
