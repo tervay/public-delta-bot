@@ -1,8 +1,17 @@
 import type { EventState, State } from './diff.js'
-import { fetchTeamsByEvent } from './first.js'
+import { fetchTeamsByEvent as first } from './first.js'
+import { fetchTeamsByEvent as frc } from './frc.js'
 
 const BASE = 'https://www.thebluealliance.com/api/v3'
 const OFFICIAL_EVENT_TYPES = new Set([0, 1, 2, 3, 4, 5, 6, 7])
+const SOURCES: Record<string, typeof frc> = { frc, first }
+
+function teamSource() {
+  const name = process.env.TEAM_SOURCE || 'frc'
+  const source = SOURCES[name]
+  if (!source) throw new Error(`TEAM_SOURCE must be one of ${Object.keys(SOURCES).join(', ')}, got ${name}`)
+  return source
+}
 
 type TbaEvent = {
   key: string
@@ -44,6 +53,7 @@ export const eventState = (e: TbaEvent, teams: string[]): EventState => ({
 
 export async function fetchState(year: number): Promise<State> {
   const takenAt = new Date().toISOString()
-  const [events, byEvent] = await Promise.all([fetchOfficialEvents(year), fetchTeamsByEvent(year)])
+  const events = await fetchOfficialEvents(year)
+  const byEvent = await teamSource()(year, events.map((e) => e.event_code))
   return { takenAt, events: Object.fromEntries(events.map((e) => [e.key, eventState(e, byEvent.get(e.event_code) ?? [])])) }
 }
