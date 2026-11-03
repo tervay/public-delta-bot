@@ -9,11 +9,11 @@ const eastern = (iso: string, options: Intl.DateTimeFormatOptions) =>
 
 const day = (iso: string) => eastern(iso, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
 
-const shortDay = (iso: string) => eastern(iso, { weekday: 'short', month: 'short', day: 'numeric' })
-
 const timestamp = (iso: string) => eastern(iso, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
 
-const dayId = (iso: string) => `day-${new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/New_York' })}`
+const ymd = (iso: string) => new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+
+const dayId = (iso: string) => `day-${ymd(iso)}`
 
 const team = (key: string) => key.slice(3)
 
@@ -96,12 +96,31 @@ const regions = (entries: Entry[], events: State['events']) =>
 const chips = (kind: string, values: string[]) =>
   values.map((v) => `<button type="button" data-filter="${kind}:${escape(v)}" aria-pressed="false">${escape(v)}</button>`).join('')
 
+const month = (dates: Set<string>) => (ym: string) => {
+  const [y, m] = ym.split('-').map(Number)
+  const first = new Date(Date.UTC(y, m - 1, 1))
+  const cells = Array.from({ length: new Date(Date.UTC(y, m, 0)).getUTCDate() }, (_, i) => {
+    const d = `${ym}-${String(i + 1).padStart(2, '0')}`
+    const offset = i ? '' : ` style="grid-column-start: ${first.getUTCDay() + 1}"`
+    return dates.has(d) ? `<a href="#day-${d}"${offset}>${i + 1}</a>` : `<span${offset}>${i + 1}</span>`
+  })
+  return `
+    <div class="month">${first.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })}</div>
+    <div class="cal">${[...'SMTWTFS'].map((w) => `<b>${w}</b>`).join('')}${cells.join('')}</div>`
+}
+
+const calendar = (entries: Entry[]) => {
+  const dates = new Set(entries.map((e) => ymd(e.at)))
+  const [latest, ...earlier] = [...new Set([...dates].map((d) => d.slice(0, 7)))].map(month(dates))
+  return `${latest}${earlier.length ? `<details><summary>Earlier months (${earlier.length})</summary>${earlier.join('')}</details>` : ''}`
+}
+
 const renderSidebar = (entries: Entry[], events: State['events']) => `
 <aside>
   <label class="label" for="team">Team</label>
   <input id="team" type="search" inputmode="numeric" placeholder="e.g. 254" autocomplete="off">
   <h4 class="label">Days</h4>
-  <nav class="days">${entries.map((e) => `<a href="#${dayId(e.at)}">${shortDay(e.at)}</a>`).join('')}</nav>
+  <nav>${calendar(entries)}</nav>
   <h4 class="label">Districts</h4>
   <div class="chips">${chips('group', groups(entries))}</div>
   <h4 class="label">Regions</h4>
@@ -132,7 +151,14 @@ const render = (feed: Feed | null, state: State | null) => `<!doctype html>
   .label { font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); margin: 12px 0 0; font-weight: 600; }
   .label:first-child { margin-top: 0; }
   input { font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); width: 100%; box-sizing: border-box; }
-  .days { display: flex; flex-direction: column; gap: 2px; }
+  .month { font-size: 0.8rem; font-weight: 600; margin: 8px 0 2px; }
+  .month:first-child { margin-top: 0; }
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+  .cal b { font-size: 0.7rem; font-weight: 600; color: var(--muted); }
+  .cal span { color: var(--muted); opacity: 0.45; }
+  .cal a { font-weight: 700; border-radius: 4px; }
+  .cal a:hover { background: var(--line); text-decoration: none; }
+  summary { font-size: 0.8rem; color: var(--muted); cursor: pointer; margin-top: 8px; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .chips button { font: inherit; font-size: 0.8rem; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; background: none; color: var(--fg); cursor: pointer; }
   .chips button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
@@ -156,7 +182,6 @@ const render = (feed: Feed | null, state: State | null) => `<!doctype html>
   @media (max-width: 720px) {
     .layout { grid-template-columns: 1fr; gap: 16px; }
     aside { position: static; }
-    .days { flex-direction: row; flex-wrap: wrap; gap: 4px 12px; }
     li { grid-template-columns: 1fr; gap: 0; }
   }
 </style>
