@@ -13,15 +13,6 @@ async function search<T>(index: string, body: object): Promise<T[]> {
   return ((await res.json()) as { results: T[] }).results
 }
 
-export async function lastModified() {
-  const [latest] = await search<{ modified_when: string }>('teams_*,events_*', {
-    size: 1,
-    _source: ['modified_when'],
-    sort: [{ modified_when: 'desc' }],
-  })
-  return new Date(latest.modified_when)
-}
-
 export async function fetchTeamsByEvent(year: number) {
   const [events, teams] = await Promise.all([
     search<FirstEvent>('events_*', {
